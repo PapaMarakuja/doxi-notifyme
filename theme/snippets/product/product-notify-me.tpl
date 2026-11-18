@@ -1,10 +1,22 @@
-{# Avise-me quando chegar (doxi-notifyme). Incluir dentro de .buy-button-container em snippets/product/product-form.tpl #}
+{# Avise-me quando chegar (doxi-notifyme)
+   - com notify_button: true -> so o botao (em snippets/product/product-variants.tpl, junto da calculadora)
+   - sem parametro           -> modal + estilos + script (em snippets/product/product-form.tpl) #}
 {% set doxi_notify_api = 'https://doxi-notifyme.vercel.app/api/subscribe' %}
 
 {% if product.id and not quickshop %}
-<button type="button" class="js-doxi-notify-open js-modal-open-private btn btn-secondary btn-big btn-block doxi-notify-open" data-target="#doxi-notify-modal" data-modal-url="doxi-notify-modal" data-product-id="{{ product.id }}" style="display: none;">
-	Avise-me quando chegar
-</button>
+{% if notify_button %}
+<div class="js-doxi-notify-wrap doxi-notify-wrap" aria-hidden="true">
+	<div class="doxi-notify-wrap-inner">
+		<button type="button" class="js-doxi-notify-open js-modal-open-private doxi-notify-open" data-target="#doxi-notify-modal" data-modal-url="doxi-notify-modal" data-product-id="{{ product.id }}" tabindex="-1">
+			<svg class="doxi-notify-bell" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+				<path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+			</svg>
+			<span>Avise-me quando chegar</span>
+		</button>
+	</div>
+</div>
+{% else %}
 
 {% embed 'snippets/modals/modal.tpl' with {
 	modal_id: 'doxi-notify-modal',
@@ -14,16 +26,16 @@
 	modal_classes: { modal: 'h-auto', close_icon: 'icon-inline' }
 } %}
 	{% block modal_body %}
-		{# Sem <form>: o modal fica dentro do form do produto e forms aninhados não são válidos #}
+		{# Sem <form>: o modal fica dentro do form do produto e forms aninhados nao sao validos #}
 		<div class="js-doxi-notify-form doxi-notify" data-api="{{ doxi_notify_api }}">
 			<p class="doxi-notify-lgpd">
 				Em conformidade com a LGPD, usaremos o e-mail informado <strong>apenas</strong> para avisar quando
 				<strong>{{ product.name }}</strong> voltar ao estoque no(s) tamanho(s) selecionado(s).
-				É um aviso único e você não entrará em nenhuma lista de marketing.
+				Você não entrará em nenhuma lista de marketing, pode cancelar pelo link do e-mail de confirmação e apagamos seu e-mail 90 dias após o aviso.
 			</p>
 
 			<div class="form-group">
-				<label class="form-label">Tamanhos sem estoque</label>
+				<label class="js-doxi-notify-sizes-label form-label">Avisar quando chegar o tamanho:</label>
 				<div class="js-doxi-notify-sizes doxi-notify-sizes"></div>
 			</div>
 
@@ -46,13 +58,68 @@
 		</div>
 		<div class="js-doxi-notify-success doxi-notify-success" role="status" style="display: none;">
 			<p><strong>Prontinho! 🐾</strong></p>
-			<p>Vamos te avisar por e-mail assim que chegar.</p>
+			<p>Vamos te avisar por e-mail assim que chegar. Enviamos uma confirmação com o link para cancelar, se mudar de ideia.</p>
 		</div>
 	{% endblock %}
 {% endembed %}
 
 <style>
-	.doxi-notify-open { margin-top: 10px; }
+	/* Botao junto da calculadora: abre/recolhe suave (mesma tecnica do aviso sob demanda) e vibra uma vez ao aparecer */
+	.doxi-notify-wrap {
+		flex: 1 1 100%;
+		display: grid;
+		grid-template-rows: 0fr;
+		opacity: 0;
+		margin-top: -12px; /* anula o gap do .product-size-actions enquanto escondido */
+		pointer-events: none;
+		transition: grid-template-rows 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease, margin 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+	.doxi-notify-wrap.is-visible {
+		grid-template-rows: 1fr;
+		opacity: 1;
+		margin-top: 0;
+		pointer-events: auto;
+	}
+	.doxi-notify-wrap-inner { overflow: hidden; padding: 2px; }
+	.doxi-notify-open {
+		display: flex;
+		width: 100%;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		min-height: 44px;
+		padding: 10px 16px;
+		font-size: 14px;
+		font-weight: 700;
+		color: #fff;
+		background: linear-gradient(135deg, #f5a3b0 0%, #e27d8d 100%);
+		border: 0;
+		border-radius: 30px;
+		box-shadow: 0 4px 14px rgba(226, 125, 141, 0.35);
+		cursor: pointer;
+		transition: transform 0.15s ease, box-shadow 0.15s ease;
+	}
+	.doxi-notify-open:active { transform: scale(0.97); }
+	.doxi-notify-wrap.is-buzzing .doxi-notify-open { animation: doxi-notify-buzz 0.6s ease-in-out 0.3s 1; }
+	.doxi-notify-wrap.is-buzzing .doxi-notify-bell { animation: doxi-notify-ring 0.6s ease-in-out 0.3s 1; transform-origin: 50% 10%; }
+	@keyframes doxi-notify-buzz {
+		0%, 100% { transform: translateX(0); }
+		15%, 45%, 75% { transform: translateX(-3px) rotate(-1deg); }
+		30%, 60%, 90% { transform: translateX(3px) rotate(1deg); }
+	}
+	@keyframes doxi-notify-ring {
+		0%, 100% { transform: rotate(0); }
+		20%, 60% { transform: rotate(-18deg); }
+		40%, 80% { transform: rotate(18deg); }
+	}
+
+	/* Barra fixa (celular): "Sem estoque" vira "Avise-me" com a mesma cor */
+	.doxi-buy-bar-btn.is-notify {
+		color: #fff;
+		background: linear-gradient(135deg, #f5a3b0 0%, #e27d8d 100%);
+		border-color: #e27d8d;
+	}
+
 	.doxi-notify-lgpd { font-size: 13px; line-height: 1.5; color: #555552; background: #f8f8f7; border: 1px solid #e5e5e2; border-radius: 12px; padding: 12px 14px; margin: 0 0 16px; }
 	.doxi-notify-sizes { display: flex; flex-wrap: wrap; gap: 8px; }
 	.doxi-notify-sizes .btn-variant { margin: 0; }
@@ -65,7 +132,7 @@
 (function() {
 	if (window.DoxiNotify) return;
 
-	// Variantes sem estoque que combinam com as outras opções selecionadas (ex.: mesma cor), rotuladas pelo tamanho
+	// Variantes sem estoque que combinam com as outras opcoes selecionadas (ex.: mesma cor), rotuladas pelo tamanho
 	function outOfStock(variants, selected, sizeIdx) {
 		return variants.filter(function(v) {
 			if (v.available) return false;
@@ -94,18 +161,48 @@
 		return { variants: variants, selected: selected, sizeIdx: sizeIdx, current: current };
 	}
 
+	var NOTIFY_LABEL = 'Avise-me';
+
 	function refresh() {
 		var btn = document.querySelector('.js-doxi-notify-open');
 		var container = btn && btn.closest('.js-product-container');
 		if (!container) return;
 		var s = state(container);
-		btn.style.display = s.current && !s.current.available ? '' : 'none';
+		var show = !!(s.current && !s.current.available);
+		var wrap = btn.closest('.js-doxi-notify-wrap');
+		var was = wrap.classList.contains('is-visible');
+
+		wrap.classList.toggle('is-visible', show);
+		wrap.setAttribute('aria-hidden', String(!show));
+		btn.tabIndex = show ? 0 : -1;
+		if (show && !was) {
+			wrap.classList.remove('is-buzzing');
+			void wrap.offsetWidth; // reflow: a vibracao toca de novo a cada vez que o botao aparece
+			wrap.classList.add('is-buzzing');
+		}
+		if (!show) wrap.classList.remove('is-buzzing');
+
+		// Barra fixa do celular (store.js: initBuyBar espelha o botao Comprar; aqui sobrescrevemos quando sem estoque)
+		var barBtn = document.querySelector('.js-buy-bar-btn');
+		var mainBtn = document.querySelector('#product_form input[type="submit"].js-addtocart');
+		if (!barBtn || !mainBtn) return;
+		if (show) {
+			barBtn.disabled = false;
+			barBtn.textContent = NOTIFY_LABEL;
+			barBtn.classList.add('is-notify');
+		} else if (barBtn.classList.contains('is-notify')) {
+			barBtn.classList.remove('is-notify');
+			barBtn.disabled = mainBtn.disabled;
+			barBtn.textContent = mainBtn.value;
+		}
 	}
 
 	function fillModal(btn) {
 		var s = state(btn.closest('.js-product-container'));
 		var list = outOfStock(s.variants, s.selected, s.sizeIdx);
 		var box = document.querySelector('.js-doxi-notify-sizes');
+		document.querySelector('.js-doxi-notify-sizes-label').textContent =
+			list.length > 1 ? 'Quais tamanhos você quer que a gente avise?' : 'Avisar quando chegar o tamanho:';
 		box.innerHTML = '';
 		list.forEach(function(o) {
 			var a = document.createElement('button');
@@ -162,6 +259,12 @@
 		document.addEventListener('click', function(e) {
 			var open = e.target.closest('.js-doxi-notify-open');
 			if (open) return fillModal(open);
+			var bar = e.target.closest('.js-buy-bar-btn.is-notify');
+			if (bar) {
+				var trigger = document.querySelector('.js-doxi-notify-open');
+				if (trigger) trigger.click(); // abre pelo mesmo caminho do botao (modal do tema + preenchimento)
+				return;
+			}
 			var chip = e.target.closest('.js-doxi-notify-sizes .btn-variant');
 			if (chip) {
 				chip.classList.toggle('selected');
@@ -175,7 +278,7 @@
 			if (e.target.classList && e.target.classList.contains('js-variation-option')) later();
 		});
 		document.addEventListener('keydown', function(e) {
-			// Enter no e-mail não pode submeter o form do carrinho
+			// Enter no e-mail nao pode submeter o form do carrinho
 			if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('js-doxi-notify-email')) { e.preventDefault(); submit(); }
 		});
 		refresh();
@@ -186,4 +289,5 @@
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
 </script>
+{% endif %}
 {% endif %}

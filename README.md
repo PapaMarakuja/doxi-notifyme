@@ -6,6 +6,8 @@
 A Nuvemshop dispara o webhook `product/updated` → `/api/webhooks/nuvemshop` consulta o produto na API → variantes que voltaram ao estoque recebem e-mail (SMTP Hostinger, igual ao doxi-affiliates) → a linha fica marcada com `notified_at` (aviso único).
 Um cron diário (`/api/cron/restock`) refaz a checagem caso algum webhook se perca.
 
+**LGPD:** ao se inscrever a pessoa recebe um e-mail de confirmação com link "Cancelar aviso" (`/api/unsubscribe?id=...`, que pede confirmação antes de apagar, para leitores de e-mail não cancelarem sozinhos). O e-mail de reestoque traz o mesmo link. O cron apaga inscrições já avisadas há mais de 90 dias.
+
 ## Setup
 
 1. **Supabase:** rode `supabase/migrations/001_restock_subscriptions.sql` no SQL Editor.
@@ -14,7 +16,7 @@ Um cron diário (`/api/cron/restock`) refaz a checagem caso algum webhook se per
 4. **Registrar o webhook** (uma vez só):
 
 ```powershell
-curl.exe -X POST "https://api.nuvemshop.com.br/v1/$env:NUVEMSHOP_USER_ID/webhooks" -H "Authentication: bearer $env:NUVEMSHOP_ACCESS_TOKEN" -H "Content-Type: application/json" -H "User-Agent: doxi-notifyme (suporte@doxi.com.br)" -d '{\"event\":\"product/updated\",\"url\":\"https://doxi-notifyme.vercel.app/api/webhooks/nuvemshop\"}'
+curl.exe -X POST "https://api.nuvemshop.com.br/v1/$env:NUVEMSHOP_USER_ID/webhooks" -H "Authentication: bearer $env:NUVEMSHOP_ACCESS_TOKEN" -H "Content-Type: application/json" -H "User-Agent: doxi-notifyme (hello@doxiwear.com)" -d '{\"event\":\"product/updated\",\"url\":\"https://doxi-notifyme.vercel.app/api/webhooks/nuvemshop\"}'
 ```
 
 5. **Tema:** copie `theme/snippets/product/product-notify-me.tpl` para o tema e inclua dentro de `.buy-button-container` em `snippets/product/product-form.tpl`, logo depois do botão de comprar:

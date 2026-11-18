@@ -1,4 +1,4 @@
-import { notifyProduct, pendingProductIds } from "@/lib/restock";
+import { notifyProduct, pendingProductIds, purgeNotified } from "@/lib/restock";
 
 // Rede de segurança para webhooks perdidos: varre os produtos com inscrições pendentes
 export async function GET(req: Request) {
@@ -13,5 +13,6 @@ export async function GET(req: Request) {
       console.error("cron notify failed", id, e);
     }
   }
-  return Response.json({ sent });
+  const purged = await purgeNotified(90);
+  return Response.json({ sent, purged });
 }

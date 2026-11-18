@@ -1,6 +1,6 @@
 import { db, TABLE, type RestockSubscription } from "./supabase";
 import { getProduct, inStock, productName, variantImage } from "./nuvemshop";
-import { sendRestockEmail } from "./email";
+import { cancelUrl, sendRestockEmail } from "./email";
 
 /** Avisa todos os inscritos pendentes das variantes do produto que voltaram ao estoque. Retorna quantos e-mails saíram. */
 export async function notifyProduct(productId: number): Promise<number> {
@@ -30,6 +30,7 @@ export async function notifyProduct(productId: number): Promise<number> {
         variantLabel: sub.variant_label,
         url: product.canonical_url,
         image: variantImage(product, variant),
+        cancelUrl: cancelUrl(sub.id),
       });
       sent++;
     } catch (e) {
@@ -45,4 +46,12 @@ export async function pendingProductIds(): Promise<number[]> {
   const { data, error } = await db().from(TABLE).select("product_id").is("notified_at", null);
   if (error) throw error;
   return [...new Set((data ?? []).map((r) => Number(r.product_id)))];
+}
+
+// LGPD: depois de avisado o e-mail já cumpriu a finalidade; guardamos só por 90 dias
+export async function purgeNotified(days = 90): Promise<number> {
+  const cutoff = new Date(Date.now() - days * 86_400_000).toISOString();
+  const { data, error } = await db().from(TABLE).delete().lt("notified_at", cutoff).select("id");
+  if (error) throw error;
+  return data?.length ?? 0;
 }

@@ -1,5 +1,7 @@
 import { db, TABLE } from "@/lib/supabase";
-import { getProduct, inStock, variantLabel } from "@/lib/nuvemshop";
+import { after } from "next/server";
+import { getProduct, inStock, productName, variantLabel } from "@/lib/nuvemshop";
+import { cancelUrl, sendConfirmationEmail } from "@/lib/email";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -47,15 +49,34 @@ export async function POST(req: Request) {
     if (!variants.length) return json(req, { error: "Esses tamanhos já estão disponíveis" }, 409);
 
     const consentAt = new Date().toISOString();
+    const created: { id: string; label: string }[] = [];
     for (const v of variants) {
-      const { error } = await db().from(TABLE).insert({
-        product_id: productId,
-        variant_id: v.id,
-        variant_label: variantLabel(v),
-        email,
-        consent_at: consentAt,
-      });
+      const label = variantLabel(v);
+      const { data, error } = await db()
+        .from(TABLE)
+        .insert({ product_id: productId, variant_id: v.id, variant_label: label, email, consent_at: consentAt })
+        .select("id")
+        .single();
       if (error && error.code !== "23505") throw error; // 23505 = já inscrito e pendente: tudo certo
+      if (data) created.push({ id: data.id, label });
+    }
+
+    // Confirmação com link de cancelamento; só para inscrições novas (repetir o form não reenvia e-mail)
+    if (created.length) {
+      after(async () => {
+        try {
+          await sendConfirmationEmail({
+            to: email,
+            productName: productName(product),
+            variantLabels: created.map((c) => c.label),
+            url: product.canonical_url,
+            image: product.images[0]?.src ?? null,
+            cancelUrl: cancelUrl(created[0].id), // o cancelamento apaga todos os tamanhos deste produto
+          });
+        } catch (e) {
+          console.error("confirmation email failed", email, e);
+        }
+      });
     }
     return json(req, { ok: true });
   } catch (e) {

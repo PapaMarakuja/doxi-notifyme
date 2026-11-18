@@ -26,7 +26,7 @@ export async function getProduct(productId: number): Promise<NsProduct | null> {
   const res = await fetch(`${base}/${process.env.NUVEMSHOP_USER_ID}/products/${productId}`, {
     headers: {
       Authentication: `bearer ${process.env.NUVEMSHOP_ACCESS_TOKEN}`,
-      "User-Agent": "doxi-notifyme (suporte@doxi.com.br)",
+      "User-Agent": "doxi-notifyme (hello@doxiwear.com)",
     },
     cache: "no-store",
   });
